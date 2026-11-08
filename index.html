@@ -3,12 +3,13 @@
 <html>
 <head>
     <title>Brick Breaker Game</title>
+
     <style>
         body {
             background: #222;
             color: white;
             text-align: center;
-            font-family: Arial;
+            font-family: Arial, sans-serif;
         }
 
         canvas {
@@ -16,14 +17,47 @@
             border: 2px solid white;
             display: block;
             margin: 20px auto;
+            max-width: 95%;
         }
 
+        /* CHANGED: Improved button styling */
         button {
             padding: 10px 20px;
+            margin: 5px;
             cursor: pointer;
+            border: none;
+            border-radius: 5px;
+            font-weight: bold;
         }
+
+        #pause {
+            background: #ff9800;
+            color: white;
+        }
+
+        #restart {
+            background: #4caf50;
+            color: white;
+        }
+
+        /* CHANGED: Speed control styling */
+        .controls {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin: 15px;
+        }
+
+        input[type="range"] {
+            cursor: pointer;
+            accent-color: #00e5ff;
+        }
+
     </style>
 </head>
+
 <body>
 
     <h1>Brick Breaker Game</h1>
@@ -32,7 +66,27 @@
 
     <canvas id="canvas" width="600" height="450"></canvas>
 
-    <button id="restart">Restart Game</button>
+    <!-- CHANGED: Grouped all game controls -->
+    <div class="controls">
+
+        <button id="pause">Pause</button>
+
+        <button id="restart">Restart Game</button>
+
+        <label for="ballSpeed">Ball Speed:</label>
+
+        <input
+            type="range"
+            id="ballSpeed"
+            min="1"
+            max="10"
+            value="5"
+            step="1"
+        >
+
+        <span id="speedValue">5</span>
+
+    </div>
 
     <p>Use LEFT and RIGHT arrow keys to move the paddle.</p>
 

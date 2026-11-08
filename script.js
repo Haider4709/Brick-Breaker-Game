@@ -30,7 +30,11 @@ let score = 0;
 let lives = 3;
 
 let gameOver = false;
-let gameWon = false;
+let gameWon = false; // FIXED: flase -> false
+
+let isPaused = false;
+
+let ballSpeed = 5;
 
 
 // ==================================
@@ -48,8 +52,9 @@ function initBall() {
         y: height - 50
     };
 
-    xSpeed = 3;
-    ySpeed = -4;
+    // CHANGED: Speed controlled by slider
+    xSpeed = ballSpeed * 0.6;
+    ySpeed = -ballSpeed * 0.8;
 }
 
 
@@ -218,8 +223,6 @@ function updatePaddle() {
         paddle.x += paddle.speed;
     }
 
-    // Keep paddle inside canvas
-
     paddle.x = Math.max(
         0,
         Math.min(width - paddle.width, paddle.x)
@@ -237,8 +240,6 @@ function updateBall() {
     ballPosition.x += xSpeed;
     ballPosition.y += ySpeed;
 
-    // Left and right wall collision
-
     if (
         ballPosition.x - BALL_SIZE / 2 < 0 ||
         ballPosition.x + BALL_SIZE / 2 > width
@@ -246,13 +247,9 @@ function updateBall() {
         xSpeed = -xSpeed;
     }
 
-    // Top wall collision
-
     if (ballPosition.y - BALL_SIZE / 2 < 0) {
         ySpeed = -ySpeed;
     }
-
-    // Bottom wall collision
 
     if (ballPosition.y - BALL_SIZE / 2 > height) {
 
@@ -292,20 +289,13 @@ function checkPaddleCollision() {
         ballLeft <= paddle.x + paddle.width
     ) {
 
-        // Reverse vertical direction
-
         ySpeed = -Math.abs(ySpeed);
-
-        // Change horizontal direction
-        // depending on where ball hits paddle
 
         let hitPosition =
             (ballPosition.x - (paddle.x + paddle.width / 2))
             / (paddle.width / 2);
 
-        xSpeed = hitPosition * 5;
-
-        // Prevent ball from sticking to paddle
+        xSpeed = hitPosition * ballSpeed;
 
         ballPosition.y =
             paddle.y - BALL_SIZE / 2;
@@ -350,8 +340,6 @@ function checkBrickCollision() {
 
             score += 10;
 
-            // Bounce ball
-
             ySpeed = -ySpeed;
 
         }
@@ -382,14 +370,41 @@ function checkWin() {
 // 16. KEYBOARD CONTROLS
 // ==================================
 
+
+// ==================================
+// 16. KEYBOARD CONTROLS
+// ==================================
+
 document.addEventListener("keydown", event => {
 
+    // LEFT ARROW: Move paddle left
     if (event.key === "ArrowLeft") {
         moveLeft = true;
     }
 
+    // RIGHT ARROW: Move paddle right
     if (event.key === "ArrowRight") {
         moveRight = true;
+    }
+
+    // CHANGED: SPACEBAR - Pause / Play
+    if (event.code === "Space") {
+
+        event.preventDefault();
+
+        // Prevent repeated toggles when holding space
+        if (!event.repeat) {
+            pauseButton.click();
+        }
+    }
+
+    // CHANGED: ENTER / RETURN - Restart game
+    if (event.key === "Enter") {
+
+        event.preventDefault();
+
+        // Restart the game
+        restartGame();
     }
 
 });
@@ -408,28 +423,50 @@ document.addEventListener("keyup", event => {
 
 
 // ==================================
-// 17. GAME OVER SCREEN
+// 17. BALL SPEED SLIDER
+// ==================================
+
+let speedSlider = document.querySelector("#ballSpeed");
+let speedValue = document.querySelector("#speedValue");
+
+// CHANGED: Keep the ball's direction while changing speed
+speedSlider.addEventListener("input", () => {
+
+    ballSpeed = Number(speedSlider.value);
+
+    speedValue.textContent = ballSpeed;
+
+    let currentSpeed = Math.hypot(xSpeed, ySpeed);
+
+    if (currentSpeed > 0) {
+
+        let directionX = xSpeed / currentSpeed;
+        let directionY = ySpeed / currentSpeed;
+
+        xSpeed = directionX * ballSpeed;
+        ySpeed = directionY * ballSpeed;
+
+    }
+
+});
+
+
+// ==================================
+// 18. GAME OVER SCREEN
 // ==================================
 
 function drawGameOver() {
 
     ctx.fillStyle = "rgba(0, 0, 0, 0.8)";
-
     ctx.fillRect(0, 0, width, height);
 
     ctx.fillStyle = "red";
-
     ctx.font = "40px Arial";
     ctx.textAlign = "center";
 
-    ctx.fillText(
-        "GAME OVER",
-        width / 2,
-        height / 2
-    );
+    ctx.fillText("GAME OVER", width / 2, height / 2);
 
     ctx.font = "20px Arial";
-
     ctx.fillStyle = "white";
 
     ctx.fillText(
@@ -442,25 +479,19 @@ function drawGameOver() {
 
 
 // ==================================
-// 18. WIN SCREEN
+// 19. WIN SCREEN
 // ==================================
 
 function drawWinScreen() {
 
     ctx.fillStyle = "rgba(0, 0, 0, 0.8)";
-
     ctx.fillRect(0, 0, width, height);
 
     ctx.fillStyle = "#00ff00";
-
     ctx.font = "40px Arial";
     ctx.textAlign = "center";
 
-    ctx.fillText(
-        "YOU WIN!",
-        width / 2,
-        height / 2
-    );
+    ctx.fillText("YOU WIN!", width / 2, height / 2);
 
     ctx.fillStyle = "white";
     ctx.font = "20px Arial";
@@ -475,40 +506,30 @@ function drawWinScreen() {
 
 
 // ==================================
-// 19. MAIN GAME LOOP
+// 20. PAUSE / PLAY BUTTON
 // ==================================
 
-function gameLoop() {
+let pauseButton = document.querySelector("#pause");
 
-    draw();
+pauseButton.addEventListener("click", () => {
 
-    if (gameOver) {
-        drawGameOver();
-        return;
+    if (gameOver || gameWon) return;
+
+    isPaused = !isPaused;
+
+    pauseButton.textContent =
+        isPaused ? "Play" : "Pause";
+
+    // CHANGED: Resume the animation loop
+    if (!isPaused) {
+        gameLoop();
     }
 
-    if (gameWon) {
-        drawWinScreen();
-        return;
-    }
-
-    updatePaddle();
-
-    updateBall();
-
-    checkPaddleCollision();
-
-    checkBrickCollision();
-
-    checkWin();
-
-    requestAnimationFrame(gameLoop);
-
-}
+});
 
 
 // ==================================
-// 20. RESTART GAME
+// 21. RESTART GAME
 // ==================================
 
 function restartGame() {
@@ -519,13 +540,16 @@ function restartGame() {
     gameOver = false;
     gameWon = false;
 
+    // CHANGED: Reset pause state
+    isPaused = false;
+    pauseButton.textContent = "Pause";
+
     paddle.x = width / 2 - PADDLE_WIDTH / 2;
 
     moveLeft = false;
     moveRight = false;
 
     createBricks();
-
     initBall();
 
     gameLoop();
@@ -539,11 +563,76 @@ document.querySelector("#restart").addEventListener(
 
 
 // ==================================
-// 21. START GAME
+// 22. MAIN GAME LOOP
+// ==================================
+
+// CHANGED: Prevent multiple animation loops
+let animationId = null;
+
+function gameLoop() {
+
+    if (animationId !== null) {
+        return;
+    }
+
+    function animate() {
+
+        animationId = null;
+
+        draw();
+
+        if (gameOver) {
+            drawGameOver();
+            return;
+        }
+
+        if (gameWon) {
+            drawWinScreen();
+            return;
+        }
+
+        if (isPaused) {
+
+            ctx.fillStyle = "white";
+            ctx.font = "30px Arial";
+            ctx.textAlign = "center";
+
+            ctx.fillText(
+                "PAUSED",
+                width / 2,
+                height / 2
+            );
+
+            return;
+        }
+
+        updatePaddle();
+        updateBall();
+
+        checkPaddleCollision();
+        checkBrickCollision();
+        checkWin();
+
+        if (!gameOver && !gameWon) {
+            animationId = requestAnimationFrame(animate);
+        } else {
+            draw();
+
+            if (gameOver) drawGameOver();
+            if (gameWon) drawWinScreen();
+        }
+
+    }
+
+    animationId = requestAnimationFrame(animate);
+
+}
+
+
+// ==================================
+// 23. START GAME
 // ==================================
 
 createBricks();
-
 initBall();
-
 gameLoop();
