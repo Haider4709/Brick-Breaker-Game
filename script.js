@@ -3,11 +3,11 @@
 // 1. SELECT CANVAS
 // ==================================
 
-let canvas = document.querySelector("#canvas");
-let ctx = canvas.getContext("2d");
+const canvas = document.querySelector("#canvas");
+const ctx = canvas.getContext("2d");
 
-let width = canvas.width;
-let height = canvas.height;
+const width = canvas.width;
+const height = canvas.height;
 
 
 // ==================================
@@ -26,19 +26,33 @@ const BRICK_WIDTH = 65;
 const BRICK_HEIGHT = 20;
 const BRICK_GAP = 8;
 
+const MAX_LIVES = 3;
+const MAX_STAGES = 5;
+
 let score = 0;
-let lives = 3;
+let lives = MAX_LIVES;
 
 let gameOver = false;
-let gameWon = false; // FIXED: flase -> false
-
+let gameWon = false;
 let isPaused = false;
 
 let ballSpeed = 5;
+let currentStage = 1;
 
 
 // ==================================
-// 3. BALL SETTINGS
+// 3. BOMB ANIMATION SETTINGS
+// ==================================
+
+let bombAnimation = false;
+let bombBricks = [];
+let bombFrame = 0;
+
+const BOMB_DURATION = 30;
+
+
+// ==================================
+// 4. BALL SETTINGS
 // ==================================
 
 let ballPosition;
@@ -46,20 +60,18 @@ let xSpeed;
 let ySpeed;
 
 function initBall() {
-
     ballPosition = {
         x: width / 2,
         y: height - 50
     };
 
-    // CHANGED: Speed controlled by slider
     xSpeed = ballSpeed * 0.6;
     ySpeed = -ballSpeed * 0.8;
 }
 
 
 // ==================================
-// 4. PADDLE SETTINGS
+// 5. PADDLE SETTINGS
 // ==================================
 
 let paddle = {
@@ -75,45 +87,49 @@ let moveRight = false;
 
 
 // ==================================
-// 5. CREATE BRICKS
+// 6. CREATE BRICKS
 // ==================================
 
 let bricks = [];
 
 function createBricks() {
-
     bricks = [];
 
-    for (let row = 0; row < BRICK_ROWS; row++) {
+    const stageColors = [
+        ["#ff5252", "#ff9800", "#ffeb3b", "#4caf50", "#2196f3"],
+        ["#e040fb", "#ab47bc", "#7e57c2", "#5c6bc0", "#3949ab"],
+        ["#b2ff59", "#76ff03", "#64dd17", "#00c853", "#009688"],
+        ["#ff80ab", "#ff4081", "#f50057", "#c51162", "#880e4f"],
+        ["#80d8ff", "#40c4ff", "#00b0ff", "#0091ea", "#01579b"]
+    ];
 
+    const colors = stageColors[currentStage - 1];
+
+    const totalRows = Math.min(
+        BRICK_ROWS + currentStage - 1,
+        12
+    );
+
+    for (let row = 0; row < totalRows; row++) {
         for (let col = 0; col < BRICK_COLUMNS; col++) {
-
             bricks.push({
                 x: 15 + col * (BRICK_WIDTH + BRICK_GAP),
                 y: 40 + row * (BRICK_HEIGHT + BRICK_GAP),
                 width: BRICK_WIDTH,
                 height: BRICK_HEIGHT,
-                color: [
-                    "#ff5252",
-                    "#ff9800",
-                    "#ffeb3b",
-                    "#4caf50",
-                    "#2196f3"
-                ][row],
+                color: colors[row % colors.length],
                 destroyed: false
             });
-
         }
     }
 }
 
 
 // ==================================
-// 6. DRAW BALL
+// 7. DRAW BALL
 // ==================================
 
 function drawBall() {
-
     ctx.beginPath();
 
     ctx.arc(
@@ -132,32 +148,35 @@ function drawBall() {
 
 
 // ==================================
-// 7. DRAW PADDLE
+// 8. DRAW PADDLE
 // ==================================
 
 function drawPaddle() {
+    ctx.fillStyle = 'dodgerblue';
+    
+    ctx.beginPath();
 
-    ctx.fillStyle = "#00e5ff";
-
-    ctx.fillRect(
+    ctx.roundRect(
         paddle.x,
         paddle.y,
         paddle.width,
-        paddle.height
+        paddle.height,
+        paddle.height/2
     );
+
+    ctx.fill();
 }
+
+   
 
 
 // ==================================
-// 8. DRAW BRICKS
+// 9. DRAW BRICKS
 // ==================================
 
 function drawBricks() {
-
     bricks.forEach(brick => {
-
         if (!brick.destroyed) {
-
             ctx.fillStyle = brick.color;
 
             ctx.fillRect(
@@ -166,55 +185,119 @@ function drawBricks() {
                 brick.width,
                 brick.height
             );
-
         }
-
     });
-
 }
 
 
 // ==================================
-// 9. DRAW SCORE AND LIVES
+// 10. BOMB ANIMATION
+// ==================================
+
+function drawBombAnimation() {
+    if (!bombAnimation) return;
+
+    bombBricks.forEach(brick => {
+        if (!brick.destroyed && bombFrame % 8 < 4) {
+            ctx.font = "22px Arial";
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+
+            ctx.fillText(
+                "💣",
+                brick.x + brick.width / 2,
+                brick.y + brick.height / 2
+            );
+        }
+    });
+}
+
+
+function updateBombAnimation() {
+    if (!bombAnimation) return;
+
+    bombFrame++;
+
+    if (bombFrame >= BOMB_DURATION) {
+        bombBricks.forEach(brick => {
+            if (!brick.destroyed) {
+                brick.destroyed = true;
+                score += 10;
+            }
+        });
+
+        bombAnimation = false;
+        bombBricks = [];
+        bombFrame = 0;
+
+        checkWin();
+    }
+}
+
+
+function startBomb() {
+    if (
+        isPaused ||
+        gameOver ||
+        gameWon ||
+        bombAnimation
+    ) {
+        return;
+    }
+
+    bombBricks = bricks.filter(
+        brick => !brick.destroyed
+    );
+
+    if (bombBricks.length === 0) return;
+
+    bombFrame = 0;
+    bombAnimation = true;
+}
+
+
+// ==================================
+// 11. DRAW SCORE, LIVES AND STAGE
 // ==================================
 
 function drawScore() {
-
     ctx.fillStyle = "white";
     ctx.font = "18px Arial";
-    ctx.textAlign = "left";
 
+    ctx.textAlign = "left";
     ctx.fillText("Score: " + score, 15, 25);
 
     ctx.textAlign = "right";
-
     ctx.fillText("Lives: " + lives, width - 15, 25);
 
+    ctx.textAlign = "center";
+    ctx.fillText(
+        "Stage: " + currentStage + "/" + MAX_STAGES,
+        width / 2,
+        25
+    );
 }
 
 
 // ==================================
-// 10. DRAW EVERYTHING
+// 12. DRAW EVERYTHING
 // ==================================
 
 function draw() {
-
     ctx.clearRect(0, 0, width, height);
 
     drawBall();
     drawPaddle();
     drawBricks();
     drawScore();
-
 }
 
 
 // ==================================
-// 11. MOVE PADDLE
+// 13. MOVE PADDLE
 // ==================================
 
 function updatePaddle() {
-
     if (moveLeft) {
         paddle.x -= paddle.speed;
     }
@@ -227,19 +310,18 @@ function updatePaddle() {
         0,
         Math.min(width - paddle.width, paddle.x)
     );
-
 }
 
 
 // ==================================
-// 12. MOVE BALL
+// 14. MOVE BALL
 // ==================================
 
 function updateBall() {
-
     ballPosition.x += xSpeed;
     ballPosition.y += ySpeed;
 
+    // Left and right walls
     if (
         ballPosition.x - BALL_SIZE / 2 < 0 ||
         ballPosition.x + BALL_SIZE / 2 > width
@@ -247,38 +329,39 @@ function updateBall() {
         xSpeed = -xSpeed;
     }
 
+    // Top wall
     if (ballPosition.y - BALL_SIZE / 2 < 0) {
         ySpeed = -ySpeed;
     }
 
+    // Bottom wall: lose one life
     if (ballPosition.y - BALL_SIZE / 2 > height) {
-
         lives--;
 
         if (lives <= 0) {
+            lives = 0;
             gameOver = true;
-        } else {
-            initBall();
+            return;
         }
 
+        initBall();
+        paddle.x = width / 2 - PADDLE_WIDTH / 2;
     }
-
 }
 
 
 // ==================================
-// 13. PADDLE COLLISION
+// 15. PADDLE COLLISION
 // ==================================
 
 function checkPaddleCollision() {
-
-    let ballBottom =
+    const ballBottom =
         ballPosition.y + BALL_SIZE / 2;
 
-    let ballLeft =
+    const ballLeft =
         ballPosition.x - BALL_SIZE / 2;
 
-    let ballRight =
+    const ballRight =
         ballPosition.x + BALL_SIZE / 2;
 
     if (
@@ -288,45 +371,37 @@ function checkPaddleCollision() {
         ballRight >= paddle.x &&
         ballLeft <= paddle.x + paddle.width
     ) {
-
         ySpeed = -Math.abs(ySpeed);
 
-        let hitPosition =
+        const hitPosition =
             (ballPosition.x - (paddle.x + paddle.width / 2))
             / (paddle.width / 2);
 
         xSpeed = hitPosition * ballSpeed;
 
-        ballPosition.y =
-            paddle.y - BALL_SIZE / 2;
-
+        ballPosition.y = paddle.y - BALL_SIZE / 2;
     }
-
 }
 
 
 // ==================================
-// 14. BRICK COLLISION
+// 16. BRICK COLLISION
 // ==================================
 
 function checkBrickCollision() {
-
     bricks.forEach(brick => {
+        if (brick.destroyed) return;
 
-        if (brick.destroyed) {
-            return;
-        }
-
-        let ballLeft =
+        const ballLeft =
             ballPosition.x - BALL_SIZE / 2;
 
-        let ballRight =
+        const ballRight =
             ballPosition.x + BALL_SIZE / 2;
 
-        let ballTop =
+        const ballTop =
             ballPosition.y - BALL_SIZE / 2;
 
-        let ballBottom =
+        const ballBottom =
             ballPosition.y + BALL_SIZE / 2;
 
         if (
@@ -335,82 +410,96 @@ function checkBrickCollision() {
             ballBottom > brick.y &&
             ballTop < brick.y + brick.height
         ) {
-
             brick.destroyed = true;
 
             score += 10;
-
             ySpeed = -ySpeed;
-
         }
-
     });
-
 }
 
 
 // ==================================
-// 15. CHECK WIN CONDITION
+// 17. CHECK WIN AND NEXT STAGE
 // ==================================
 
 function checkWin() {
-
-    let remainingBricks = bricks.filter(
+    const remainingBricks = bricks.filter(
         brick => !brick.destroyed
     );
 
     if (remainingBricks.length === 0) {
-        gameWon = true;
-    }
+        // Final stage completed
+        if (currentStage >= MAX_STAGES) {
+            gameWon = true;
+            return;
+        }
 
+        // Move to the next stage
+        currentStage++;
+
+        lives = MAX_LIVES;
+
+        // Increase ball speed
+        ballSpeed = Math.min(ballSpeed + 1, 10);
+
+        speedSlider.value = ballSpeed;
+        speedValue.textContent = ballSpeed;
+
+        // Create next stage
+        createBricks();
+
+        // Reset ball and paddle
+        initBall();
+        paddle.x = width / 2 - PADDLE_WIDTH / 2;
+    }
 }
 
 
 // ==================================
-// 16. KEYBOARD CONTROLS
-// ==================================
-
-
-// ==================================
-// 16. KEYBOARD CONTROLS
+// 18. KEYBOARD CONTROLS
 // ==================================
 
 document.addEventListener("keydown", event => {
-
-    // LEFT ARROW: Move paddle left
     if (event.key === "ArrowLeft") {
         moveLeft = true;
     }
 
-    // RIGHT ARROW: Move paddle right
     if (event.key === "ArrowRight") {
         moveRight = true;
     }
 
-    // CHANGED: SPACEBAR - Pause / Play
+    // SPACEBAR: Pause / Play
     if (event.code === "Space") {
-
         event.preventDefault();
 
-        // Prevent repeated toggles when holding space
         if (!event.repeat) {
             pauseButton.click();
         }
     }
 
-    // CHANGED: ENTER / RETURN - Restart game
+    // ENTER: Restart
     if (event.key === "Enter") {
-
         event.preventDefault();
 
-        // Restart the game
-        restartGame();
+        if (!event.repeat) {
+            restartGame();
+        }
     }
 
+    // SECRET BOMB: SHIFT + S
+    if (
+        event.shiftKey &&
+        event.code === "KeyS" &&
+        !event.repeat
+    ) {
+        event.preventDefault();
+        startBomb();
+    }
 });
 
-document.addEventListener("keyup", event => {
 
+document.addEventListener("keyup", event => {
     if (event.key === "ArrowLeft") {
         moveLeft = false;
     }
@@ -418,80 +507,130 @@ document.addEventListener("keyup", event => {
     if (event.key === "ArrowRight") {
         moveRight = false;
     }
-
 });
 
 
 // ==================================
-// 17. BALL SPEED SLIDER
+// 19. BALL SPEED SLIDER
 // ==================================
 
-let speedSlider = document.querySelector("#ballSpeed");
-let speedValue = document.querySelector("#speedValue");
+const speedSlider = document.querySelector("#ballSpeed");
+const speedValue = document.querySelector("#speedValue");
 
-// CHANGED: Keep the ball's direction while changing speed
 speedSlider.addEventListener("input", () => {
-
     ballSpeed = Number(speedSlider.value);
 
     speedValue.textContent = ballSpeed;
 
-    let currentSpeed = Math.hypot(xSpeed, ySpeed);
+    const currentSpeed = Math.hypot(xSpeed, ySpeed);
 
     if (currentSpeed > 0) {
-
-        let directionX = xSpeed / currentSpeed;
-        let directionY = ySpeed / currentSpeed;
+        const directionX = xSpeed / currentSpeed;
+        const directionY = ySpeed / currentSpeed;
 
         xSpeed = directionX * ballSpeed;
         ySpeed = directionY * ballSpeed;
-
     }
-
 });
 
 
 // ==================================
-// 18. GAME OVER SCREEN
+// 20. GAME OVER SCREEN
 // ==================================
 
 function drawGameOver() {
-
-    ctx.fillStyle = "rgba(0, 0, 0, 0.8)";
+    ctx.fillStyle = "rgba(0, 0, 0, 0.90)";
     ctx.fillRect(0, 0, width, height);
 
-    ctx.fillStyle = "red";
-    ctx.font = "40px Arial";
+    ctx.fillStyle = "#ff3333";
+    ctx.font = "bold 48px Arial";
     ctx.textAlign = "center";
 
-    ctx.fillText("GAME OVER", width / 2, height / 2);
+    ctx.fillText(
+        "GAME OVER!",
+        width / 2,
+        height / 2 - 85
+    );
 
-    ctx.font = "20px Arial";
-    ctx.fillStyle = "white";
+    ctx.font = "55px Arial";
+    ctx.fillText(
+        "💥",
+        width / 2,
+        height / 2 - 15
+    );
+
+    ctx.fillStyle = "#ffffff";
+    ctx.font = "24px Arial";
 
     ctx.fillText(
         "Final Score: " + score,
         width / 2,
-        height / 2 + 40
+        height / 2 + 45
     );
 
+    ctx.fillStyle = "#00e5ff";
+    ctx.font = "20px Arial";
+
+    ctx.fillText(
+        "Stage Reached: " + currentStage,
+        width / 2,
+        height / 2 + 85
+    );
+
+    ctx.fillStyle = "#ffcc00";
+    ctx.font = "18px Arial";
+
+    ctx.fillText(
+        "Better luck next time!",
+        width / 2,
+        height / 2 + 125
+    );
+
+    ctx.fillStyle = "#ffffff";
+    ctx.font = "16px Arial";
+
+    ctx.fillText(
+        "Click RESTART GAME to play again",
+        width / 2,
+        height / 2 + 165
+    );
 }
 
 
 // ==================================
-// 19. WIN SCREEN
+// 21. WIN SCREEN
 // ==================================
 
 function drawWinScreen() {
-
-    ctx.fillStyle = "rgba(0, 0, 0, 0.8)";
+    ctx.fillStyle = "rgba(0, 0, 0, 0.85)";
     ctx.fillRect(0, 0, width, height);
 
-    ctx.fillStyle = "#00ff00";
-    ctx.font = "40px Arial";
+    ctx.font = "65px Arial";
     ctx.textAlign = "center";
 
-    ctx.fillText("YOU WIN!", width / 2, height / 2);
+    ctx.fillText(
+        "🏆",
+        width / 2,
+        height / 2 - 90
+    );
+
+    ctx.fillStyle = "#FFD700";
+    ctx.font = "bold 42px Arial";
+
+    ctx.fillText(
+        "YOU WIN!",
+        width / 2,
+        height / 2 - 25
+    );
+
+    ctx.fillStyle = "#00ffcc";
+    ctx.font = "22px Arial";
+
+    ctx.fillText(
+        "🎉 Congratulations! 🎉",
+        width / 2,
+        height / 2 + 20
+    );
 
     ctx.fillStyle = "white";
     ctx.font = "20px Arial";
@@ -499,62 +638,80 @@ function drawWinScreen() {
     ctx.fillText(
         "Final Score: " + score,
         width / 2,
-        height / 2 + 40
+        height / 2 + 65
     );
 
+    ctx.font = "17px Arial";
+
+    ctx.fillText(
+        "You are a Brick Breaker Champion! 👑",
+        width / 2,
+        height / 2 + 105
+    );
 }
 
 
 // ==================================
-// 20. PAUSE / PLAY BUTTON
+// 22. PAUSE / PLAY BUTTON
 // ==================================
 
-let pauseButton = document.querySelector("#pause");
+const pauseButton = document.querySelector("#pause");
 
 pauseButton.addEventListener("click", () => {
-
     if (gameOver || gameWon) return;
 
     isPaused = !isPaused;
 
-    pauseButton.textContent =
-        isPaused ? "Play" : "Pause";
+    pauseButton.textContent = isPaused ? "Play" : "Pause";
 
-    // CHANGED: Resume the animation loop
     if (!isPaused) {
         gameLoop();
     }
-
 });
 
 
 // ==================================
-// 21. RESTART GAME
+// 23. RESTART GAME
 // ==================================
 
 function restartGame() {
-
     score = 0;
-    lives = 3;
+    lives = MAX_LIVES;
 
     gameOver = false;
     gameWon = false;
-
-    // CHANGED: Reset pause state
     isPaused = false;
-    pauseButton.textContent = "Pause";
 
-    paddle.x = width / 2 - PADDLE_WIDTH / 2;
+    currentStage = 1;
+    ballSpeed = 5;
+
+    speedSlider.value = 5;
+    speedValue.textContent = 5;
+
+    // Reset bomb animation
+    bombAnimation = false;
+    bombBricks = [];
+    bombFrame = 0;
+
+    // Reset controls
+    pauseButton.textContent = "Pause";
 
     moveLeft = false;
     moveRight = false;
 
+    // Reset paddle
+    paddle.x = width / 2 - PADDLE_WIDTH / 2;
+
+    // Create new bricks
     createBricks();
+
+    // Reset ball
     initBall();
 
+    // Start game
     gameLoop();
-
 }
+
 
 document.querySelector("#restart").addEventListener(
     "click",
@@ -563,36 +720,34 @@ document.querySelector("#restart").addEventListener(
 
 
 // ==================================
-// 22. MAIN GAME LOOP
+// 24. MAIN GAME LOOP
 // ==================================
 
-// CHANGED: Prevent multiple animation loops
 let animationId = null;
 
 function gameLoop() {
-
-    if (animationId !== null) {
-        return;
-    }
+    // Prevent duplicate animation loops
+    if (animationId !== null) return;
 
     function animate() {
-
         animationId = null;
 
         draw();
 
+        // Game Over
         if (gameOver) {
             drawGameOver();
             return;
         }
 
+        // Win screen
         if (gameWon) {
             drawWinScreen();
             return;
         }
 
+        // Pause screen
         if (isPaused) {
-
             ctx.fillStyle = "white";
             ctx.font = "30px Arial";
             ctx.textAlign = "center";
@@ -606,31 +761,46 @@ function gameLoop() {
             return;
         }
 
+        // Bomb animation
+        if (bombAnimation) {
+            drawBombAnimation();
+            updateBombAnimation();
+
+            animationId = requestAnimationFrame(animate);
+            return;
+        }
+
+        // Normal game movement
         updatePaddle();
         updateBall();
 
-        checkPaddleCollision();
-        checkBrickCollision();
-        checkWin();
+        if (!gameOver) {
+            checkPaddleCollision();
+            checkBrickCollision();
+            checkWin();
+        }
 
         if (!gameOver && !gameWon) {
             animationId = requestAnimationFrame(animate);
         } else {
             draw();
 
-            if (gameOver) drawGameOver();
-            if (gameWon) drawWinScreen();
-        }
+            if (gameOver) {
+                drawGameOver();
+            }
 
+            if (gameWon) {
+                drawWinScreen();
+            }
+        }
     }
 
     animationId = requestAnimationFrame(animate);
-
 }
 
 
 // ==================================
-// 23. START GAME
+// 25. START GAME
 // ==================================
 
 createBricks();
