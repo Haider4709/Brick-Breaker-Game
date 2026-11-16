@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Brick Breaker Game</title>
+
+    <style>
+        body {
+            background: radial-gradient(ellipse at top, #1a0b2e 0%, #07040f 70%);
+            min-height: 100vh;
+            margin: 0;
+            padding: 10px;
+            box-sizing: border-box;
+            color: white;
+            text-align: center;
+            font-family: Arial, sans-serif;
+        }
+
+        h1 {
+            color: #fff;
+            text-shadow: 0 0 8px #00e5ff, 0 0 20px #00e5ff, 0 0 40px #ff00e6;
+            letter-spacing: 2px;
+        }
+
+        canvas {
+            background: #08040f;
+            border: 2px solid #00e5ff;
+            box-shadow: 0 0 15px #00e5ff, 0 0 40px rgba(255, 0, 230, 0.5);
+            display: block;
+            margin: 20px auto;
+            max-width: 95%;
+        }
+
+        button {
+            padding: 10px 20px;
+            margin: 5px;
+            cursor: pointer;
+            border-radius: 5px;
+            font-weight: bold;
+            background: transparent;
+            transition: box-shadow 0.2s;
+        }
+
+        #pause { color: #ff2bd6; border: 2px solid #ff2bd6; }
+        #pause:hover { box-shadow: 0 0 14px #ff2bd6; }
+
+        #restart { color: #39ff14; border: 2px solid #39ff14; }
+        #restart:hover { box-shadow: 0 0 14px #39ff14; }
+
+        #resetBest { color: #00e5ff; border: 2px solid #00e5ff; }
+        #resetBest:hover { box-shadow: 0 0 14px #00e5ff; }
+
+        #submitBox {
+            margin: 10px auto;
+            padding: 12px;
+            max-width: 360px;
+            border: 2px solid #39ff14;
+            border-radius: 8px;
+            box-shadow: 0 0 14px rgba(57, 255, 20, 0.4);
+        }
+
+        #submitBox[hidden] { display: none; }
+
+        #playerName {
+            padding: 9px;
+            border-radius: 5px;
+            border: 2px solid #00e5ff;
+            background: #08040f;
+            color: white;
+            width: 140px;
+        }
+
+        #submitScore { color: #39ff14; border: 2px solid #39ff14; }
+
+        #submitMessage { display: block; margin-top: 6px; min-height: 1.2em; }
+
+        #leaderboard {
+            display: inline-block;
+            text-align: left;
+            min-width: 260px;
+            margin: 0 0 20px;
+            color: #e0ffff;
+        }
+
+        .controls {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin: 15px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <h1>Brick Breaker Game</h1>
+
+    <h3>Best Score: <span id="highScore">0</span></h3>
+
+    <canvas id="canvas" width="600" height="450"></canvas>
+
+    <div class="controls">
+        <button id="pause">Pause</button>
+        <button id="restart">Restart Game</button>
+        <button id="resetBest">Reset Best Score</button>
+    </div>
+
+    <p>Use LEFT and RIGHT arrow keys to move the paddle. SPACE pauses, ENTER restarts.</p>
+
+    <!-- Appears when a game ends -->
+    <div id="submitBox" hidden>
+        <p>Save your score to the leaderboard</p>
+        <input id="playerName" maxlength="12" placeholder="Your name" autocomplete="off">
+        <button id="submitScore">Submit score</button>
+        <span id="submitMessage"></span>
+    </div>
+
+    <h2>Top 10</h2>
+    <p id="leaderboardStatus"></p>
+    <ol id="leaderboard"></ol>
+
+    <script src="script.js"></script>
+</body>
+</html>

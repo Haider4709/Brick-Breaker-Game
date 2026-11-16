@@ -1,0 +1,12 @@
+{
+  "name": "brick-breaker-online",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Brick Breaker with a SQLite leaderboard",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=22.13"
+  }
+}
